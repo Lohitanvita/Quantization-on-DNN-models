@@ -1,6 +1,3 @@
-# resnet.py
-# Modified from
-# https://github.com/pytorch/vision/blob/release/0.8.0/torchvision/models/resnet.py
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -96,12 +93,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
-    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
-    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
-    # This variant is also known as ResNet V1.5 and improves accuracy according to
-    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
-
+            
     expansion: int = 4
 
     def __init__(
@@ -294,8 +286,6 @@ def _resnet(arch: str, block: Type[Union[BasicBlock,
             pretrained: bool, progress: bool, **kwargs: Any) -> ResNet:
     model = ResNet(block, layers, **kwargs)
     if pretrained:
-        # state_dict = torch.load('/Home/PycharmProjects/Quantization_CIFAR10/saved_models/resnet18_cifar10.pt')
-        # model.load_state_dict(state_dict)
         state_dict = load_state_dict_from_url(model_urls[arch], progress=progress)
         model.load_state_dict(state_dict)
     return model
