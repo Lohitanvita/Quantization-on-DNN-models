@@ -12,17 +12,10 @@ def _make_divisible(v, divisor, min_value=None):
     """
     This function is taken from the original tf repo.
     It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
-    :param v:
-    :param divisor:
-    :param min_value:
-    :return:
     """
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
@@ -49,15 +42,11 @@ class InvertedResidual(nn.Module):
 
         layers = []
         if expand_ratio != 1:
-            # pw
             layers.append(ConvBNReLU(inp, hidden_dim, kernel_size=1))
         layers.extend([
-            # dw
             ConvBNReLU(hidden_dim, hidden_dim, stride=stride, groups=hidden_dim),
-            # pw-linear
             nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(oup),
-        ])
+            nn.BatchNorm2d(oup),])
         self.conv = nn.Sequential(*layers)
         self.skip_add = nn.quantized.FloatFunctional()
 
@@ -92,8 +81,6 @@ class MobileNetV2(nn.Module):
         input_channel = _make_divisible(input_channel * width_mult, round_nearest)
         self.last_channel = _make_divisible(last_channel * max(1.0, width_mult), round_nearest)
 
-        # self.quant = QuantStub()
-
         # CIFAR10: stride 2 -> 1
         features = [ConvBNReLU(3, input_channel, stride=1)]
         # END
@@ -116,8 +103,6 @@ class MobileNetV2(nn.Module):
             nn.Linear(self.last_channel, num_classes),
         )
 
-        # self.dequant = DeQuantStub()
-
         # weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -132,11 +117,9 @@ class MobileNetV2(nn.Module):
                 nn.init.zeros_(m.bias)
 
     def forward(self, x):
-        # x = self.quant(x)
         x = self.features(x)
         x = x.mean([2, 3])
         x = self.classifier(x)
-        # x = self.dequant(x)
         return x
 
     def fuse_model(self):
