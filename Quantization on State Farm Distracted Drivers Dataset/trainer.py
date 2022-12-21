@@ -58,41 +58,44 @@ def create_model(model_name, num_classes=10):
     return model
 
 
-def prepare_dataloader(num_workers, train_batch_size, eval_batch_size):
-    train_transform = transforms.Compose([transforms.RandomCrop(32, padding=4),
-                                          transforms.RandomHorizontalFlip(),
-                                          transforms.ToTensor(),
-                                          transforms.Normalize(mean=(0.485, 0.456, 0.406),
-                                                               std=(0.229, 0.224, 0.225)), ])
+def prepare_data_loaders(data_path):
+    traindir = os.path.join(data_path, 'train')
+    valdir = os.path.join(data_path, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
-    test_transform = transforms.Compose([transforms.ToTensor(),
-                                         transforms.Normalize(mean=(0.485, 0.456, 0.406),
-                                                              std=(0.229, 0.224, 0.225)), ])
+    dataset = torchvision.datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+    print("dataset_train : %d" % (len(dataset)))
 
-    train_set = torchvision.datasets.CIFAR10(root="data",
-                                             train=True,
-                                             download=True,
-                                             transform=train_transform)
+    dataset_test = torchvision.datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+    print("dataset_test : %d" % (len(dataset_test)))
 
-    test_set = torchvision.datasets.CIFAR10(root="data",
-                                            train=False,
-                                            download=True,
-                                            transform=test_transform)
+    train_sampler = torch.utils.data.RandomSampler(dataset)
+    test_sampler = torch.utils.data.SequentialSampler(dataset_test)
 
-    train_sampler = torch.utils.data.RandomSampler(train_set)
-    test_sampler = torch.utils.data.SequentialSampler(test_set)
+    data_loader = torch.utils.data.DataLoader(
+        dataset, batch_size=train_batch_size,
+        sampler=train_sampler)
 
-    train_loader = torch.utils.data.DataLoader(dataset=train_set,
-                                               batch_size=train_batch_size,
-                                               sampler=train_sampler,
-                                               num_workers=num_workers)
+    data_loader_test = torch.utils.data.DataLoader(
+        dataset_test, batch_size=eval_batch_size,
+        sampler=test_sampler)
 
-    test_loader = torch.utils.data.DataLoader(dataset=test_set,
-                                              batch_size=eval_batch_size,
-                                              sampler=test_sampler,
-                                              num_workers=num_workers)
-
-    return train_loader, test_loader
+    return data_loader, data_loader_test
 
 
 def evaluate_model(model, test_loader, device, criterion=None):
@@ -300,6 +303,7 @@ def main(args):
 
     model_name = args.model
     logger(f'Performing quantization for {model_name}')
+    data_path = 'data/Distracted_Driver_Dataset/imgs/'
     model_dir = "saved_models"
     model_filename = f"{model_name}_cifar10.pt"
     quantized_model_filename = f"{model_name}_quantized_cifar10.pt"
